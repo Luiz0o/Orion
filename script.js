@@ -27,13 +27,12 @@ function falar(texto) {
         
         utter.onstart = () => recognition.stop();
 
-        // QUANDO O NAVEGADOR PROCESSA O FIM DA FALA
         utter.onend = () => {
             console.log("Orion: Fala processada. Aguardando finalização do áudio...");
             // Delay de 1000ms (1 segundo) para garantir que o som terminou no alto-falante
             setTimeout(() => {
                 try { recognition.start(); } catch (e) {}
-                resolve(); // Libera o código para abrir o app
+                resolve(); 
             }, 1000); 
         };
         
@@ -61,21 +60,20 @@ async function enviarComando(texto) {
             // AGUARDA A FALA + O DELAY DE SEGURANÇA
             await falar(data.resposta); 
             
-            // 5.2 - GATILHO DE ABERTURA NATIVA (Sem abrir nova aba)
+            // 5.2 - GATILHO DE ABERTURA: Volta ao método de CLIQUE (mais compatível)
             if (data.url) {
                 console.log("Orion: Disparando comando nativo:", data.url);
                 
-                // Criamos um iframe invisível para disparar o protocolo
-                // Isso evita que o navegador tente carregar uma página branca
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = data.url;
-                document.body.appendChild(iframe);
+                // Criamos um link invisível e simulamos o clique do usuário
+                const linkApp = document.createElement('a');
+                linkApp.href = data.url;
+                document.body.appendChild(linkApp);
+                linkApp.click();
                 
-                // Removemos o iframe logo após o disparo
+                // Removemos o link após o disparo
                 setTimeout(() => {
-                    document.body.removeChild(iframe);
-                }, 500);
+                    document.body.removeChild(linkApp);
+                }, 100);
             }
             
             const chatContainer = document.getElementById('chat');
