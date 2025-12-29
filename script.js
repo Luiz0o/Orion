@@ -117,16 +117,30 @@ recognition.onresult = (event) => {
     }
 };
 
-// 7. BOTÃO DE ATIVAÇÃO INICIAL
+// 7. BOTÃO DE ATIVAÇÃO / REATIVAÇÃO (GATILHO DE SEGURANÇA)
 function ativar() {
-    console.log("Tentando iniciar microfone...");
+    console.log("Orion: Tentando (re)iniciar sistemas...");
+    
+    // Força a parada de qualquer instância travada antes de começar
     try {
-        recognition.start();
-        document.title = "ORION - ONLINE";
-        document.getElementById('status').innerText = "Escuta Ativa";
-        document.getElementById('orb').classList.add('pulse'); 
-        console.log("Sistemas Orion iniciados.");
+        recognition.stop();
+        window.speechSynthesis.cancel();
     } catch (e) {
-        console.error("Erro ao ligar microfone ou já ativo:", e);
+        console.log("Nenhuma instância anterior ativa.");
     }
+
+    // Pequeno delay para o navegador processar a parada antes do novo início
+    setTimeout(() => {
+        try {
+            recognition.start();
+            document.title = "ORION - ONLINE";
+            document.getElementById('status').innerText = "Escuta Ativa";
+            document.getElementById('status').style.color = "#00ffcc"; // Volta para verde
+            document.getElementById('orb').classList.add('pulse');
+            console.log("Sistemas Orion reativados com sucesso.");
+        } catch (e) {
+            console.error("Erro ao reativar microfone:", e);
+            document.getElementById('status').innerText = "ERRO: TENTE NOVAMENTE";
+        }
+    }, 300);
 }
