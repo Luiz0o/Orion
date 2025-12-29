@@ -17,8 +17,7 @@ recognition.onend = () => {
     }
 };
 
-// 4. MOTOR DE SÍNTESE DE VOZ COM PROMESSA (SINCRONIZAÇÃO)
-// Esta função agora devolve uma "Promessa" que só é resolvida quando a fala termina
+// 4. MOTOR DE SÍNTESE DE VOZ COM PROMESSA E DELAY DE SEGURANÇA
 function falar(texto) {
     return new Promise((resolve) => {
         window.speechSynthesis.cancel(); 
@@ -26,14 +25,16 @@ function falar(texto) {
         utter.lang = 'pt-BR';
         utter.rate = 0.9; 
         
-        // Pausa o microfone para o Orion não se ouvir
         utter.onstart = () => recognition.stop();
 
-        // QUANDO A FALA TERMINA: Resolve a promessa e religa o microfone
+        // QUANDO O NAVEGADOR PROCESSA O FIM DA FALA
         utter.onend = () => {
-            console.log("Orion: Terminou de falar.");
-            try { recognition.start(); } catch (e) {}
-            resolve(); // Libera o "await" na função enviarComando
+            console.log("Orion: Fala processada. Aguardando finalização do áudio...");
+            // Delay de 1000ms (1 segundo) para garantir que o som terminou no alto-falante
+            setTimeout(() => {
+                try { recognition.start(); } catch (e) {}
+                resolve(); // Libera o código para abrir o app
+            }, 1000); 
         };
         
         window.speechSynthesis.speak(utter);
@@ -54,19 +55,17 @@ async function enviarComando(texto) {
         const data = await response.json();
         console.log("Dados recebidos do n8n:", data); 
 
-        // 5.1 - Processa a Resposta de Voz no Chat e no Áudio
         if (data.resposta) {
             document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
             
-            // AGUARDA O ORION TERMINAR DE FALAR (BLOQUEIO DE LINHA)
+            // AGUARDA A FALA + O DELAY DE SEGURANÇA
             await falar(data.resposta); 
             
-            // 5.2 - GATILHO DE ABERTURA: Só executa após o "await falar" ser concluído
+            // 5.2 - GATILHO DE ABERTURA: Agora com sincronia real de tempo
             if (data.url) {
-                console.log("Orion: Iniciando salto para app após fala completa:", data.url);
+                console.log("Orion: Abrindo app após confirmação de áudio:", data.url);
                 window.location.assign(data.url);
                 
-                // Backup de clique simulado para Android
                 const linkForçado = document.createElement('a');
                 linkForçado.href = data.url;
                 linkForçado.rel = "external"; 
