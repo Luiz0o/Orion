@@ -57,21 +57,22 @@ async function enviarComando(texto) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // 5.2 - GATILHO DE ABERTURA DE APLICATIVOS (WhatsApp, etc)
+        // 5.2 - GATILHO DE ABERTURA DE APLICATIVOS (Otimizado para Android)
         if (data.url) {
-            console.log("Orion: Disparando redirecionamento para app:", data.url);
+            console.log("Orion: Saltando para app via link verificado...");
             
-            // Método 'Replace' força o navegador a tratar o link como prioridade de sistema
-            window.location.replace(data.url);
-
-            // Backup: Se o replace falhar, tenta o clique simulado após 1 segundo
+            // O uso de window.location.assign é mais "gentil" com o Android
+            // para disparar a verificação de links suportados sem o pop-up de confirmação.
+            window.location.assign(data.url);
+            
+            // Backup agressivo se o sistema demorar mais de 300ms
             setTimeout(() => {
                 const linkApp = document.createElement('a');
                 linkApp.href = data.url;
                 document.body.appendChild(linkApp);
                 linkApp.click();
                 document.body.removeChild(linkApp);
-            }, 1000);
+            }, 300);
         }
 
     } catch (e) {
