@@ -57,22 +57,25 @@ async function enviarComando(texto) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // 5.2 - GATILHO DE ABERTURA DE APLICATIVOS (Otimizado para Android)
+        // 5.2 - GATILHO DE ABERTURA DE APLICATIVOS (Versão Anti-Tela Branca)
         if (data.url) {
-            console.log("Orion: Saltando para app via link verificado...");
+            console.log("Orion: Forçando salto direto para o app...");
             
-            // O uso de window.location.assign é mais "gentil" com o Android
-            // para disparar a verificação de links suportados sem o pop-up de confirmação.
-            window.location.assign(data.url);
+            // Criamos um link oculto com o atributo 'download' (ajuda a evitar tela branca)
+            const linkForçado = document.createElement('a');
+            linkForçado.href = data.url;
             
-            // Backup agressivo se o sistema demorar mais de 300ms
+            // Forçamos o Android a entender que não é uma navegação comum
+            linkForçado.rel = "external"; 
+            
+            document.body.appendChild(linkForçado);
+            linkForçado.click();
+            
+            // Se o clique não funcionar em 200ms, usamos o redirecionamento de janela
             setTimeout(() => {
-                const linkApp = document.createElement('a');
-                linkApp.href = data.url;
-                document.body.appendChild(linkApp);
-                linkApp.click();
-                document.body.removeChild(linkApp);
-            }, 300);
+                window.location.assign(data.url);
+                document.body.removeChild(linkForçado);
+            }, 200);
         }
 
     } catch (e) {
