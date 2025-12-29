@@ -53,20 +53,18 @@ async function enviarComando(texto) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // 2. EXECUÇÃO DE APLICATIVOS OU SITES (Gatilho de URL)
+        // 2. EXECUÇÃO DE APLICATIVOS (Gatilho de Protocolo)
         if (data.url) {
-            console.log("Ação externa detetada:", data.url);
+            console.log("Orion disparando abertura de app:", data.url);
             
-            // Criamos um botão invisível para forçar a abertura no telemóvel
-            const linkForçado = document.createElement('a');
-            linkForçado.href = data.url;
-            linkForçado.target = "_blank"; // Tenta abrir numa nova 'instância'
-            linkForçado.rel = "noopener noreferrer";
+            // Criamos um elemento de link oculto
+            const linkApp = document.createElement('a');
+            linkApp.href = data.url;
             
-            // O segredo: anexar ao documento, clicar e remover
-            document.body.appendChild(linkForçado);
-            linkForçado.click();
-            document.body.removeChild(linkForçado);
+            // No telemóvel, o clique direto num link funciona melhor que o location.assign
+            document.body.appendChild(linkApp);
+            linkApp.click();
+            document.body.removeChild(linkApp);
         }
 
     } catch (e) {
