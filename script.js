@@ -7,27 +7,34 @@ recognition.lang = 'pt-BR';
 recognition.continuous = true; 
 recognition.interimResults = false; 
 
-// 3.1 - DETECTAR VOLTA AO FOCO (Tentar reviver sem Refresh)
-window.addEventListener('focus', () => {
-    console.log("Orion: Janela focada. Verificando estado do sistema...");
-    // Se o status estiver como ativo mas o microfone parou, tenta religar
-    if (document.getElementById('status').innerText === "Escuta Ativa") {
+// 3.1 - RECUPERAÇÃO DE PERMISSÃO E FOCO
+window.addEventListener('focus', async () => {
+    console.log("Orion: Retornando foco. Tentando reativar sistemas...");
+    
+    // Pequeno delay para o Android liberar os recursos de hardware
+    setTimeout(() => {
         try {
+            recognition.stop(); // Garante que não há processos travados
             recognition.start();
-            console.log("Orion: Microfone reativado automaticamente.");
+            document.getElementById('status').innerText = "Escuta Ativa";
+            document.getElementById('status').style.color = "#00e5ff";
         } catch (e) {
-            // Se já estiver rodando, o navegador ignora, o que é perfeito
+            console.log("Orion: Sistema já está em escuta ou aguardando clique.");
         }
-    }
+    }, 500);
 });
 
-// Ajuste no tratamento de erros para não "morrer" ao trocar de app
+// Ajuste no Monitor de Erros
 recognition.onerror = (event) => {
-    console.log("Erro no reconhecimento:", event.error);
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        document.getElementById('status').innerText = "Permissão Negada / Pausado";
+    console.log("Erro capturado:", event.error);
+    
+    if (event.error === 'not-allowed') {
+        document.getElementById('status').innerText = "BLOQUEADO: Clique na Orbe";
+        document.getElementById('status').style.color = "#ff4444";
+        document.getElementById('orb').classList.remove('pulse');
     }
-    // Força o reinício se o erro for apenas uma interrupção de rede ou silêncio
+    
+    // Se for erro de rede ou interrupção, tenta auto-restart
     if (event.error === 'network' || event.error === 'aborted') {
         setTimeout(() => { try { recognition.start(); } catch(e){} }, 1000);
     }
