@@ -4,8 +4,8 @@ const WEBHOOK_URL = "https://n8nwebhook.n8ntechost.shop/webhook/Orion";
 // 2. CONFIGURAÇÃO DO MOTOR DE RECONHECIMENTO DE VOZ
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = 'pt-BR';
-recognition.continuous = true; // Mantém o Orion sempre ouvindo
-recognition.interimResults = false; // Só processa quando você termina a frase
+recognition.continuous = true; 
+recognition.interimResults = false; 
 
 // 3. SISTEMA DE AUTO-RECARREGAMENTO DO MICROFONE
 recognition.onend = () => {
@@ -17,23 +17,41 @@ recognition.onend = () => {
     }
 };
 
-// 4. MOTOR DE SÍNTESE DE VOZ (ORION FALANDO)
-function falar(texto) {
+// 4. MOTOR DE SÍNTESE DE VOZ E REDIRECIONAMENTO (SINCRONIZADO)
+function falarESaltar(texto, url) {
     window.speechSynthesis.cancel(); // Para qualquer fala anterior
     const utter = new SpeechSynthesisUtterance(texto);
     utter.lang = 'pt-BR';
-    utter.rate = 0.9; // Velocidade da fala
+    utter.rate = 0.9; 
     
     // Desliga o microfone enquanto fala para não ouvir a própria voz
     utter.onstart = () => recognition.stop();
+
+    // EVENTO FINAL: Executa a ação APÓS terminar de falar
     utter.onend = () => {
+        if (url) {
+            console.log("Orion: Voz finalizada. Abrindo app:", url);
+            
+            // Método de salto otimizado para Android
+            window.location.assign(url);
+            
+            // Backup de clique simulado
+            const linkForçado = document.createElement('a');
+            linkForçado.href = url;
+            linkForçado.rel = "external"; 
+            document.body.appendChild(linkForçado);
+            linkForçado.click();
+            document.body.removeChild(linkForçado);
+        }
+        
+        // Religa o microfone após a ação ou fala
         try { recognition.start(); } catch (e) {}
     };
     
     window.speechSynthesis.speak(utter);
 }
 
-// 5. ENVIO DE DADOS PARA O N8N E EXECUÇÃO DE AÇÕES
+// 5. ENVIO DE DADOS PARA O N8N E PROCESSAMENTO
 async function enviarComando(texto) {
     try {
         console.log("Enviando para o n8n:", texto);
@@ -47,35 +65,15 @@ async function enviarComando(texto) {
         const data = await response.json();
         console.log("Dados recebidos do n8n:", data); 
 
-        // 5.1 - Processa a Resposta de Voz no Chat
+        // 5.1 - Processa a Resposta de Voz e o Chat
         if (data.resposta) {
             document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
-            falar(data.resposta);
             
-            // Faz o chat rolar sozinho para baixo
+            // Agora chamamos a função sincronizada passando o texto e a URL (se houver)
+            falarESaltar(data.resposta, data.url);
+            
             const chatContainer = document.getElementById('chat');
             chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        // 5.2 - GATILHO DE ABERTURA DE APLICATIVOS (Versão Anti-Tela Branca)
-        if (data.url) {
-            console.log("Orion: Forçando salto direto para o app...");
-            
-            // Criamos um link oculto com o atributo 'download' (ajuda a evitar tela branca)
-            const linkForçado = document.createElement('a');
-            linkForçado.href = data.url;
-            
-            // Forçamos o Android a entender que não é uma navegação comum
-            linkForçado.rel = "external"; 
-            
-            document.body.appendChild(linkForçado);
-            linkForçado.click();
-            
-            // Se o clique não funcionar em 200ms, usamos o redirecionamento de janela
-            setTimeout(() => {
-                window.location.assign(data.url);
-                document.body.removeChild(linkForçado);
-            }, 200);
         }
 
     } catch (e) {
@@ -92,14 +90,14 @@ recognition.onresult = (event) => {
     }
 };
 
-// 7. BOTÃO DE ATIVAÇÃO INICIAL (GATILHO DE SEGURANÇA)
+// 7. BOTÃO DE ATIVAÇÃO INICIAL
 function ativar() {
     console.log("Tentando iniciar microfone...");
     try {
         recognition.start();
         document.title = "ORION - ONLINE";
         document.getElementById('status').innerText = "Escuta Ativa";
-        document.getElementById('orb').classList.add('pulse'); // Ativa animação visual
+        document.getElementById('orb').classList.add('pulse'); 
         console.log("Sistemas Orion iniciados.");
     } catch (e) {
         console.error("Erro ao ligar microfone ou já ativo:", e);
