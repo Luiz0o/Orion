@@ -17,41 +17,30 @@ recognition.onend = () => {
     }
 };
 
-// 4. MOTOR DE SÍNTESE DE VOZ E REDIRECIONAMENTO (SINCRONIZADO)
-function falarESaltar(texto, url) {
-    window.speechSynthesis.cancel(); // Para qualquer fala anterior
-    const utter = new SpeechSynthesisUtterance(texto);
-    utter.lang = 'pt-BR';
-    utter.rate = 0.9; 
-    
-    // Desliga o microfone enquanto fala para não ouvir a própria voz
-    utter.onstart = () => recognition.stop();
-
-    // EVENTO FINAL: Executa a ação APÓS terminar de falar
-    utter.onend = () => {
-        if (url) {
-            console.log("Orion: Voz finalizada. Abrindo app:", url);
-            
-            // Método de salto otimizado para Android
-            window.location.assign(url);
-            
-            // Backup de clique simulado
-            const linkForçado = document.createElement('a');
-            linkForçado.href = url;
-            linkForçado.rel = "external"; 
-            document.body.appendChild(linkForçado);
-            linkForçado.click();
-            document.body.removeChild(linkForçado);
-        }
+// 4. MOTOR DE SÍNTESE DE VOZ COM PROMESSA (SINCRONIZAÇÃO)
+// Esta função agora devolve uma "Promessa" que só é resolvida quando a fala termina
+function falar(texto) {
+    return new Promise((resolve) => {
+        window.speechSynthesis.cancel(); 
+        const utter = new SpeechSynthesisUtterance(texto);
+        utter.lang = 'pt-BR';
+        utter.rate = 0.9; 
         
-        // Religa o microfone após a ação ou fala
-        try { recognition.start(); } catch (e) {}
-    };
-    
-    window.speechSynthesis.speak(utter);
+        // Pausa o microfone para o Orion não se ouvir
+        utter.onstart = () => recognition.stop();
+
+        // QUANDO A FALA TERMINA: Resolve a promessa e religa o microfone
+        utter.onend = () => {
+            console.log("Orion: Terminou de falar.");
+            try { recognition.start(); } catch (e) {}
+            resolve(); // Libera o "await" na função enviarComando
+        };
+        
+        window.speechSynthesis.speak(utter);
+    });
 }
 
-// 5. ENVIO DE DADOS PARA O N8N E PROCESSAMENTO
+// 5. ENVIO DE DADOS E EXECUÇÃO SEQUENCIAL
 async function enviarComando(texto) {
     try {
         console.log("Enviando para o n8n:", texto);
@@ -65,12 +54,26 @@ async function enviarComando(texto) {
         const data = await response.json();
         console.log("Dados recebidos do n8n:", data); 
 
-        // 5.1 - Processa a Resposta de Voz e o Chat
+        // 5.1 - Processa a Resposta de Voz no Chat e no Áudio
         if (data.resposta) {
             document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
             
-            // Agora chamamos a função sincronizada passando o texto e a URL (se houver)
-            falarESaltar(data.resposta, data.url);
+            // AGUARDA O ORION TERMINAR DE FALAR (BLOQUEIO DE LINHA)
+            await falar(data.resposta); 
+            
+            // 5.2 - GATILHO DE ABERTURA: Só executa após o "await falar" ser concluído
+            if (data.url) {
+                console.log("Orion: Iniciando salto para app após fala completa:", data.url);
+                window.location.assign(data.url);
+                
+                // Backup de clique simulado para Android
+                const linkForçado = document.createElement('a');
+                linkForçado.href = data.url;
+                linkForçado.rel = "external"; 
+                document.body.appendChild(linkForçado);
+                linkForçado.click();
+                document.body.removeChild(linkForçado);
+            }
             
             const chatContainer = document.getElementById('chat');
             chatContainer.scrollTop = chatContainer.scrollHeight;
