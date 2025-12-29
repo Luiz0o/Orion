@@ -55,13 +55,18 @@ async function enviarComando(texto) {
 
         // 2. EXECUÇÃO DE APLICATIVOS OU SITES (Gatilho de URL)
         if (data.url) {
-            console.log("Orion executando ação externa:", data.url);
+            console.log("Ação externa detetada:", data.url);
             
-            // Pequeno atraso para a voz do Orion começar antes do app abrir
-            setTimeout(() => {
-                // window.location.assign é melhor para disparar protocolos de apps (spotify:, whatsapp:)
-                window.location.assign(data.url);
-            }, 800);
+            // Criamos um botão invisível para forçar a abertura no telemóvel
+            const linkForçado = document.createElement('a');
+            linkForçado.href = data.url;
+            linkForçado.target = "_blank"; // Tenta abrir numa nova 'instância'
+            linkForçado.rel = "noopener noreferrer";
+            
+            // O segredo: anexar ao documento, clicar e remover
+            document.body.appendChild(linkForçado);
+            linkForçado.click();
+            document.body.removeChild(linkForçado);
         }
 
     } catch (e) {
