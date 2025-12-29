@@ -2,10 +2,10 @@ const WEBHOOK_URL = "https://n8nwebhook.n8ntechost.shop/webhook/Orion";
 
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = 'pt-BR';
-recognition.continuous = true; // Mantém o microfone aberto para escuta contínua
-recognition.interimResults = false; // Processa apenas quando a frase termina
+recognition.continuous = true; 
+recognition.interimResults = false; 
 
-// REINICIALIZAÇÃO AUTOMÁTICA: Se o navegador desligar o mic, ele religa sozinho
+// REINICIALIZAÇÃO AUTOMÁTICA
 recognition.onend = () => {
     console.log("Orion: Reiniciando escuta automática...");
     try {
@@ -19,9 +19,8 @@ function falar(texto) {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(texto);
     utter.lang = 'pt-BR';
-    utter.rate = 0.9; // Velocidade levemente reduzida para soar mais natural
+    utter.rate = 0.9; 
     
-    // Pausamos o reconhecimento enquanto o Orion fala para evitar eco
     utter.onstart = () => recognition.stop();
     utter.onend = () => {
         try { recognition.start(); } catch (e) {}
@@ -41,27 +40,21 @@ async function enviarComando(texto) {
         });
 
         const data = await response.json();
-        console.log("Dados recebidos do n8n:", data); // Log crucial para diagnóstico
+        console.log("Dados recebidos do n8n:", data); 
 
-        // 1. PROCESSAR RESPOSTA DE VOZ E CHAT
         if (data.resposta) {
             document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
             falar(data.resposta);
             
-            // Auto-scroll do chat
             const chatContainer = document.getElementById('chat');
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // 2. EXECUÇÃO DE APLICATIVOS (Gatilho de Protocolo)
+        // EXECUÇÃO DE APLICATIVOS (Gatilho de Protocolo)
         if (data.url) {
             console.log("Orion disparando abertura de app:", data.url);
-            
-            // Criamos um elemento de link oculto
             const linkApp = document.createElement('a');
             linkApp.href = data.url;
-            
-            // No telemóvel, o clique direto num link funciona melhor que o location.assign
             document.body.appendChild(linkApp);
             linkApp.click();
             document.body.removeChild(linkApp);
@@ -73,33 +66,23 @@ async function enviarComando(texto) {
 }
 
 recognition.onresult = (event) => {
-    // Captura o último resultado da lista de transcrição
     const comando = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-    
     if (comando) {
         document.getElementById('chat').innerHTML += `<p class="user-txt">> ${comando}</p>`;
         enviarComando(comando);
     }
 };
 
+// FUNÇÃO ATIVAR ÚNICA E CORRIGIDA
 function ativar() {
-console.log("Tentando iniciar microfone...");
-    try {
-        recognition.start();
-        document.getElementById('status').innerText = "Ouvindo...";
-    } catch (e) {
-        console.error("Erro ao ligar microfone:", e); // SE O MIC NÃO LIGAR, O ERRO APARECE AQUI
-    }
-}
-
+    console.log("Tentando iniciar microfone...");
     try {
         recognition.start();
         document.title = "ORION - ONLINE";
         document.getElementById('status').innerText = "Status: Escuta Ativa";
         document.getElementById('orb').classList.add('pulse');
-        
-        // Feedback visual inicial
         console.log("Sistemas Orion iniciados.");
     } catch (e) {
-        console.log("O sistema de voz já está operando.");
+        console.error("Erro ao ligar microfone ou já ativo:", e);
     }
+}
