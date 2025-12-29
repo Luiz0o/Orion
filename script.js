@@ -62,16 +62,18 @@ async function enviarComando(texto) {
             await falar(data.resposta); 
             
             // 5.2 - GATILHO DE ABERTURA: Agora com sincronia real de tempo
-            if (data.url) {
-                console.log("Orion: Abrindo app após confirmação de áudio:", data.url);
-                window.location.assign(data.url);
+                if (data.url) {
+                console.log("Orion: Disparando comando nativo para app:", data.url);
                 
-                const linkForçado = document.createElement('a');
-                linkForçado.href = data.url;
-                linkForçado.rel = "external"; 
-                document.body.appendChild(linkForçado);
-                linkForçado.click();
-                document.body.removeChild(linkForçado);
+                // Usar um link invisível com clique simulado evita que o navegador 
+                // mude a página atual para uma tela branca.
+                const linkApp = document.createElement('a');
+                linkApp.href = data.url;
+                
+                // O segredo está aqui: não usamos window.location, apenas o clique no protocolo
+                document.body.appendChild(linkApp);
+                linkApp.click();
+                document.body.removeChild(linkApp);
             }
             
             const chatContainer = document.getElementById('chat');
