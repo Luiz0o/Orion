@@ -1,146 +1,98 @@
-// 1. CONFIGURAÇÃO DE ACESSO AO BACKEND (N8N)
 const WEBHOOK_URL = "https://n8nwebhook.n8ntechost.shop/webhook/Orion"; 
 
-// 2. CONFIGURAÇÃO DO MOTOR DE RECONHECIMENTO DE VOZ
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = 'pt-BR';
 recognition.continuous = true; 
 recognition.interimResults = false; 
 
-// 3.1 - RECUPERAÇÃO DE PERMISSÃO E FOCO
-window.addEventListener('focus', async () => {
-    console.log("Orion: Retornando foco. Tentando reativar sistemas...");
-    
-    // Pequeno delay para o Android liberar os recursos de hardware
+// Sincronização de IDs: Agora usa 'status-container' e 'chat-container'
+window.addEventListener('focus', () => {
     setTimeout(() => {
         try {
-            recognition.stop(); // Garante que não há processos travados
+            recognition.stop();
             recognition.start();
-            document.getElementById('status').innerText = "Escuta Ativa";
-            document.getElementById('status').style.color = "#00e5ff";
-        } catch (e) {
-            console.log("Orion: Sistema já está em escuta ou aguardando clique.");
-        }
+            document.getElementById('status-container').innerText = "STATUS: ESCUTA ATIVA";
+            document.getElementById('status-container').style.color = "#00f2ff";
+        } catch (e) {}
     }, 500);
 });
 
-// Ajuste no Monitor de Erros
 recognition.onerror = (event) => {
-    console.log("Erro capturado:", event.error);
-    
     if (event.error === 'not-allowed') {
-        document.getElementById('status').innerText = "BLOQUEADO: Clique na Orbe";
-        document.getElementById('status').style.color = "#ff4444";
-        document.getElementById('orb').classList.remove('pulse');
-    }
-    
-    // Se for erro de rede ou interrupção, tenta auto-restart
-    if (event.error === 'network' || event.error === 'aborted') {
-        setTimeout(() => { try { recognition.start(); } catch(e){} }, 1000);
+        const status = document.getElementById('status-container');
+        status.innerText = "BLOQUEADO: Clique na Orbe";
+        status.style.color = "#ff4444";
+        document.getElementById('orb').classList.add('orb-blocked');
     }
 };
 
-// 4. MOTOR DE SÍNTESE DE VOZ COM PROMESSA E DELAY DE SEGURANÇA
 function falar(texto) {
     return new Promise((resolve) => {
         window.speechSynthesis.cancel(); 
         const utter = new SpeechSynthesisUtterance(texto);
         utter.lang = 'pt-BR';
         utter.rate = 0.9; 
-        
         utter.onstart = () => recognition.stop();
-
         utter.onend = () => {
-            console.log("Orion: Fala processada. Aguardando finalização do áudio...");
-            // Delay de 1000ms (1 segundo) para garantir que o som terminou no alto-falante
             setTimeout(() => {
                 try { recognition.start(); } catch (e) {}
                 resolve(); 
             }, 1000); 
         };
-        
         window.speechSynthesis.speak(utter);
     });
 }
 
-// 5. ENVIO DE DADOS E EXECUÇÃO SEQUENCIAL
 async function enviarComando(texto) {
     try {
-        console.log("Enviando para o n8n:", texto);
-        
         const response = await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ comando: texto }) 
         });
-
         const data = await response.json();
-        console.log("Dados recebidos do n8n:", data); 
+        const chat = document.getElementById('chat-container');
 
         if (data.resposta) {
-            document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
-            
-            // AGUARDA A FALA + O DELAY DE SEGURANÇA
+            chat.innerHTML += `<p class="orion-txt">ORION: ${data.resposta}</p>`;
             await falar(data.resposta); 
             
-            // 5.2 - GATILHO DE ABERTURA: Volta ao método de CLIQUE (mais compatível)
             if (data.url) {
-                console.log("Orion: Disparando comando nativo:", data.url);
-                
-                // Criamos um link invisível e simulamos o clique do usuário
                 const linkApp = document.createElement('a');
                 linkApp.href = data.url;
                 document.body.appendChild(linkApp);
                 linkApp.click();
-                
-                // Removemos o link após o disparo
-                setTimeout(() => {
-                    document.body.removeChild(linkApp);
-                }, 100);
+                setTimeout(() => document.body.removeChild(linkApp), 100);
             }
-            
-            const chatContainer = document.getElementById('chat');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            chat.scrollTop = chat.scrollHeight;
         }
-
-    } catch (e) {
-        console.error("Erro na comunicação com o n8n:", e);
-    }
+    } catch (e) { console.error("Erro n8n:", e); }
 }
 
-// 6. PROCESSAMENTO DO RESULTADO DA VOZ
 recognition.onresult = (event) => {
     const comando = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-    if (comando) {
-        document.getElementById('chat').innerHTML += `<p class="user-txt">> ${comando}</p>`;
-        enviarComando(comando);
-    }
+    document.getElementById('chat-container').innerHTML += `<p class="user-txt">> ${comando}</p>`;
+    enviarComando(comando);
 };
 
-// 7. BOTÃO DE ATIVAÇÃO / REATIVAÇÃO (GATILHO DE SEGURANÇA)
 function ativar() {
-    console.log("Orion: Tentando (re)iniciar sistemas...");
+    const status = document.getElementById('status-container');
+    const orb = document.getElementById('orb');
     
-    // Força a parada de qualquer instância travada antes de começar
     try {
         recognition.stop();
         window.speechSynthesis.cancel();
-    } catch (e) {
-        console.log("Nenhuma instância anterior ativa.");
-    }
+    } catch (e) {}
 
-    // Pequeno delay para o navegador processar a parada antes do novo início
     setTimeout(() => {
         try {
             recognition.start();
-            document.title = "ORION - ONLINE";
-            document.getElementById('status').innerText = "Escuta Ativa";
-            document.getElementById('status').style.color = "#00ffcc"; // Volta para verde
-            document.getElementById('orb').classList.add('pulse');
-            console.log("Sistemas Orion reativados com sucesso.");
+            orb.classList.remove('orb-blocked');
+            orb.classList.add('pulse');
+            status.innerText = "STATUS: ESCUTA ATIVA";
+            status.style.color = "#00f2ff";
         } catch (e) {
-            console.error("Erro ao reativar microfone:", e);
-            document.getElementById('status').innerText = "ERRO: TENTE NOVAMENTE";
+            status.innerText = "ERRO: TENTE NOVAMENTE";
         }
     }, 300);
 }
