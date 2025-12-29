@@ -61,19 +61,21 @@ async function enviarComando(texto) {
             // AGUARDA A FALA + O DELAY DE SEGURANÇA
             await falar(data.resposta); 
             
-            // 5.2 - GATILHO DE ABERTURA: Agora com sincronia real de tempo
-                if (data.url) {
-                console.log("Orion: Disparando comando nativo para app:", data.url);
+            // 5.2 - GATILHO DE ABERTURA NATIVA (Sem abrir nova aba)
+            if (data.url) {
+                console.log("Orion: Disparando comando nativo:", data.url);
                 
-                // Usar um link invisível com clique simulado evita que o navegador 
-                // mude a página atual para uma tela branca.
-                const linkApp = document.createElement('a');
-                linkApp.href = data.url;
+                // Criamos um iframe invisível para disparar o protocolo
+                // Isso evita que o navegador tente carregar uma página branca
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = data.url;
+                document.body.appendChild(iframe);
                 
-                // O segredo está aqui: não usamos window.location, apenas o clique no protocolo
-                document.body.appendChild(linkApp);
-                linkApp.click();
-                document.body.removeChild(linkApp);
+                // Removemos o iframe logo após o disparo
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 500);
             }
             
             const chatContainer = document.getElementById('chat');
