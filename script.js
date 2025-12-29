@@ -7,13 +7,29 @@ recognition.lang = 'pt-BR';
 recognition.continuous = true; 
 recognition.interimResults = false; 
 
-// 3. SISTEMA DE AUTO-RECARREGAMENTO DO MICROFONE
-recognition.onend = () => {
-    console.log("Orion: Reiniciando escuta automática...");
-    try {
-        recognition.start();
-    } catch (e) {
-        console.log("Reconhecimento já está ativo ou aguardando.");
+// 3.1 - DETECTAR VOLTA AO FOCO (Tentar reviver sem Refresh)
+window.addEventListener('focus', () => {
+    console.log("Orion: Janela focada. Verificando estado do sistema...");
+    // Se o status estiver como ativo mas o microfone parou, tenta religar
+    if (document.getElementById('status').innerText === "Escuta Ativa") {
+        try {
+            recognition.start();
+            console.log("Orion: Microfone reativado automaticamente.");
+        } catch (e) {
+            // Se já estiver rodando, o navegador ignora, o que é perfeito
+        }
+    }
+});
+
+// Ajuste no tratamento de erros para não "morrer" ao trocar de app
+recognition.onerror = (event) => {
+    console.log("Erro no reconhecimento:", event.error);
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        document.getElementById('status').innerText = "Permissão Negada / Pausado";
+    }
+    // Força o reinício se o erro for apenas uma interrupção de rede ou silêncio
+    if (event.error === 'network' || event.error === 'aborted') {
+        setTimeout(() => { try { recognition.start(); } catch(e){} }, 1000);
     }
 };
 
