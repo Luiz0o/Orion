@@ -80,6 +80,15 @@ recognition.onresult = (event) => {
 };
 
 function ativar() {
+console.log("Tentando iniciar microfone...");
+    try {
+        recognition.start();
+        document.getElementById('status').innerText = "Ouvindo...";
+    } catch (e) {
+        console.error("Erro ao ligar microfone:", e); // SE O MIC NÃO LIGAR, O ERRO APARECE AQUI
+    }
+}
+
     try {
         recognition.start();
         document.title = "ORION - ONLINE";
@@ -91,4 +100,3 @@ function ativar() {
     } catch (e) {
         console.log("O sistema de voz já está operando.");
     }
-}
