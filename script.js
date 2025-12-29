@@ -24,9 +24,6 @@ function falar(texto) {
 }
 
 async function enviarComando(texto) {
-    // Rola o chat automaticamente para baixo
-    const chatContainer = document.getElementById('chat-container');
-    
     try {
         const response = await fetch(WEBHOOK_URL, {
             method: 'POST',
@@ -40,11 +37,16 @@ async function enviarComando(texto) {
             document.getElementById('chat').innerHTML += `<p class="jarvis-txt">ORION: ${data.resposta}</p>`;
             falar(data.resposta);
         }
+
+        // EXECUÇÃO DO APP:
+        if (data.url) {
+            // Usamos o window.location para disparar o protocolo do aplicativo
+            window.location.assign(data.url);
+        }
+
     } catch (e) {
-        console.error("Erro na resposta:", e);
+        console.error("Erro Orion:", e);
     }
-    
-    if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 recognition.onresult = (event) => {
@@ -59,7 +61,7 @@ function ativar() {
     try {
         recognition.start();
         document.title = "ORION - ATIVO";
-        document.getElementById('status').innerText = "Status: Escuta Contínua";
+        document.getElementById('status').innerText = "Escuta Contínua";
         document.getElementById('orb').classList.add('pulse');
     } catch (e) {
         console.log("Reconhecimento já estava ativo.");
